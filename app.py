@@ -41,6 +41,10 @@ if invoice_file and bank_statement_file:
     invoice_data['TANGGAL INVOICE'] = pd.to_datetime(invoice_data['TANGGAL INVOICE'], errors='coerce')
     bank_statement_data['Posting Date'] = pd.to_datetime(bank_statement_data['Posting Date'], errors='coerce')
 
+    # Cek jika ada nilai NaT di kolom tanggal
+    if invoice_data['TANGGAL INVOICE'].isna().sum() > 0 or bank_statement_data['Posting Date'].isna().sum() > 0:
+        st.warning("Beberapa data tidak valid pada kolom tanggal. Periksa format tanggal.")
+
     # Tampilkan data Invoice dan Rekening Koran
     st.subheader("Data Invoice")
     st.write(invoice_data)
@@ -78,6 +82,11 @@ if invoice_file and bank_statement_file:
     # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal Invoice dan Tanggal Rekening Koran yang lebih fleksibel
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
+
+    # Jika tidak ada hasil untuk penggabungan yang tepat, coba gabungkan berdasarkan toleransi 1 hari
+    if reconciled_data.empty:
+        reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
+                                   left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
     # Menambahkan kolom tanggal invoice di paling kiri
     reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
