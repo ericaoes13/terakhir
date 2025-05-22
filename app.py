@@ -79,14 +79,19 @@ if invoice_file and bank_statement_file:
         (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
-    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal Invoice dan Tanggal Rekening Koran yang lebih fleksibel
+    # Menambahkan kolom 'Posting Date Plus 1' ke Rekening Koran
+    bank_statement_data['Posting Date Plus 1'] = bank_statement_data['Posting Date'] + pd.Timedelta(days=1)
+
+    # Verifikasi apakah kolom 'Posting Date Plus 1' ada
+    st.write("Kolom 'Posting Date Plus 1' pada Rekening Koran:")
+    st.write(bank_statement_data[['Posting Date', 'Posting Date Plus 1']])
+
+    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal yang dipilih
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
     # Jika tidak ada hasil untuk penggabungan yang tepat, coba gabungkan berdasarkan toleransi 1 hari
     if reconciled_data.empty:
-        # Toleransi 1 hari antara Tanggal Invoice dan Tanggal Rekening Koran
-        bank_statement_data['Posting Date Plus 1'] = bank_statement_data['Posting Date'] + pd.Timedelta(days=1)
         reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                    left_on='Posting Date Plus 1', right_on='TANGGAL INVOICE', how='inner')
 
