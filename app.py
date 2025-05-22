@@ -79,7 +79,7 @@ if invoice_file and bank_statement_file:
         (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
-    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal yang dipilih
+    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal Invoice dan Tanggal Rekening Koran yang lebih fleksibel
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
@@ -90,7 +90,7 @@ if invoice_file and bank_statement_file:
     reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
 
     # Menambahkan kolom hasil sum invoice di paling kanan
-    reconciled_data['Hasil Sum Invoice'] = reconciled_data['HARGA'].sum()
+    reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
 
     # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
     reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
