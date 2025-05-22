@@ -79,34 +79,39 @@ if invoice_file and bank_statement_file:
         (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
-    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal Invoice dan Tanggal Rekening Koran yang lebih fleksibel
-    reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
-                               left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
-
-    # Jika tidak ada hasil untuk penggabungan yang tepat, coba gabungkan berdasarkan toleransi 1 hari
-    if reconciled_data.empty:
+    # Cek apakah hasil filter tidak kosong
+    if filtered_invoice_data.empty or filtered_bank_statement_data.empty:
+        st.warning("Data yang dipilih tidak ada dalam rentang tanggal yang Anda tentukan.")
+    else:
+        # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal yang dipilih
         reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                    left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
-    # Menambahkan kolom tanggal invoice di paling kiri
-    reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
+        # Jika penggabungan berdasarkan tanggal yang tepat tidak menghasilkan data, coba gabungkan dengan toleransi 1 hari
+        if reconciled_data.empty:
+            bank_statement_data['Posting Date Plus 1'] = bank_statement_data['Posting Date'] + pd.Timedelta(days=1)
+            reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
+                                       left_on='Posting Date Plus 1', right_on='TANGGAL INVOICE', how='inner')
 
-    # Menambahkan kolom tanggal rekening koran di sebelah kanan
-    reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
+        # Menambahkan kolom tanggal invoice di paling kiri
+        reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
 
-    # Menambahkan kolom hasil sum invoice di paling kanan
-    reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
+        # Menambahkan kolom tanggal rekening koran di sebelah kanan
+        reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
 
-    # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
-    reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
+        # Menambahkan kolom hasil sum invoice di paling kanan
+        reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
 
-    # Menghilangkan duplikasi berdasarkan Posting Date
-    reconciled_data = reconciled_data.drop_duplicates(subset=['Tanggal Rekening Koran'])
+        # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
+        reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
 
-    reconciled_data.columns = ['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice']
+        # Menghilangkan duplikasi berdasarkan Posting Date
+        reconciled_data = reconciled_data.drop_duplicates(subset=['Tanggal Rekening Koran'])
 
-    st.subheader("Contoh Hasil Rekonsiliasi:")
-    st.write(reconciled_data)
+        reconciled_data.columns = ['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice']
+
+        st.subheader("Contoh Hasil Rekonsiliasi:")
+        st.write(reconciled_data)
 
 else:
     st.warning("Harap upload kedua file: Invoice dan Rekening Koran.")
