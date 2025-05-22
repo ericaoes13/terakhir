@@ -83,11 +83,6 @@ if invoice_file and bank_statement_file:
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
-    # Jika tidak ada hasil untuk penggabungan yang tepat, coba gabungkan berdasarkan toleransi 1 hari
-    if reconciled_data.empty:
-        reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
-                                   left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
-
     # Menambahkan kolom tanggal invoice di paling kiri
     reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
 
