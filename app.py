@@ -80,8 +80,8 @@ if invoice_file and bank_statement_file:
         (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
-    # Menambahkan kolom 'Posting Date Plus Working Day' ke Rekening Koran untuk menghitung tanggal transaksi H+1 berdasarkan hari kerja
-    bank_statement_data['Posting Date Plus Working Day'] = bank_statement_data['Posting Date'] + BDay(1)
+    # Menambahkan kolom 'Posting Date Plus Working Day' ke Rekening Koran setelah filter
+    filtered_bank_statement_data['Posting Date Plus Working Day'] = filtered_bank_statement_data['Posting Date'] + BDay(1)
 
     # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal yang dipilih dan toleransi hari kerja (H+1)
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
