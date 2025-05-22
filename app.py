@@ -90,7 +90,7 @@ if invoice_file and bank_statement_file:
     reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
 
     # Menambahkan kolom hasil sum invoice di paling kanan
-    reconciled_data['Hasil Sum Invoice'] = reconciled_data['HARGA'].sum()
+    reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
 
     # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
     reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
