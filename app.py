@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from pandas.tseries.offsets import BDay
 
 # Folder untuk menyimpan file yang diupload
 UPLOAD_FOLDER = 'uploads'
@@ -52,7 +53,7 @@ if invoice_file and bank_statement_file:
     st.subheader("Data Rekening Koran")
     st.write(bank_statement_data)
 
-    # Fitur Filter Tanggal untuk Invoice
+    # Fitur Filter Tanggal untuk Invoice (menggunakan penjumlahan sum dari seluruh tanggal)
     st.subheader("Filter Berdasarkan Tanggal Invoice")
     start_date_invoice = st.date_input("Tanggal Mulai Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].min()))
     end_date_invoice = st.date_input("Tanggal Akhir Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].max()))
@@ -68,7 +69,7 @@ if invoice_file and bank_statement_file:
     # Pastikan start_date_bank adalah datetime
     start_date_bank = pd.to_datetime(start_date_bank)
 
-    # Filter data berdasarkan tanggal untuk Invoice
+    # Filter data berdasarkan tanggal untuk Invoice (jumlahkan seluruh invoice dalam rentang tanggal)
     filtered_invoice_data = invoice_data[
         (invoice_data['TANGGAL INVOICE'] >= start_date_invoice) & 
         (invoice_data['TANGGAL INVOICE'] <= end_date_invoice)
@@ -79,31 +80,40 @@ if invoice_file and bank_statement_file:
         (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
-    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal Invoice dan Tanggal Rekening Koran yang lebih fleksibel
+    # Jumlahkan seluruh nilai HARGA dalam rentang tanggal yang dipilih
+    total_invoice = filtered_invoice_data['HARGA'].sum()
+
+    # Menambahkan kolom 'Posting Date Plus Working Day' ke Rekening Koran untuk menghitung tanggal transaksi H+1 berdasarkan hari kerja
+    filtered_bank_statement_data['Posting Date Plus Working Day'] = filtered_bank_statement_data['Posting Date'] + pd.Timedelta(days=1)
+
+    # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal yang dipilih dan toleransi hari kerja (H+1)
     reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
                                left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
 
-    # Jika tidak ada hasil untuk penggabungan yang tepat, coba gabungkan berdasarkan toleransi 1 hari
+    # Jika penggabungan tidak berhasil, coba gabungkan dengan toleransi hari kerja (H+1)
     if reconciled_data.empty:
         reconciled_data = pd.merge(filtered_bank_statement_data, filtered_invoice_data, 
-                                   left_on='Posting Date', right_on='TANGGAL INVOICE', how='inner')
-
-    # Menambahkan kolom tanggal invoice di paling kiri
-    reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
+                                   left_on='Posting Date Plus Working Day', right_on='TANGGAL INVOICE', how='inner')
 
     # Menambahkan kolom tanggal rekening koran di sebelah kanan
     reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
 
     # Menambahkan kolom hasil sum invoice di paling kanan
-    reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
+    reconciled_data['Hasil Sum Invoice'] = total_invoice
+
+    # Menambahkan kolom "Match" dan "Tidak Match" berdasarkan perbandingan Credit dan Hasil Sum Invoice
+    reconciled_data['Match Status'] = reconciled_data.apply(
+        lambda row: 'Match' if row['Credit'] == row['Hasil Sum Invoice'] else 'Tidak Match', axis=1
+    )
 
     # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
-    reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
+    reconciled_data = reconciled_data[['Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice', 'Match Status']]
 
-    # Menghilangkan duplikasi berdasarkan Posting Date
-    reconciled_data = reconciled_data.drop_duplicates(subset=['Tanggal Rekening Koran'])
+    reconciled_data.columns = ['Tanggal Rekening Koran', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice', 'Match Status']
 
-    reconciled_data.columns = ['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice']
+    # Menampilkan rentang tanggal yang dipilih untuk Invoice
+    invoice_date_range = f"Rentang Tanggal Invoice: {start_date_invoice.date()} hingga {end_date_invoice.date()}"
+    st.write(invoice_date_range)
 
     st.subheader("Contoh Hasil Rekonsiliasi:")
     st.write(reconciled_data)
