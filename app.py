@@ -86,16 +86,19 @@ if invoice_file and bank_statement_file:
     # Menambahkan kolom tanggal invoice di paling kiri
     reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
 
+    # Menambahkan kolom tanggal rekening koran di sebelah kanan
+    reconciled_data.insert(1, 'Tanggal Rekening Koran', reconciled_data['Posting Date'].dt.strftime('%d/%m/%y'))
+
     # Menambahkan kolom hasil sum invoice di paling kanan
     reconciled_data['Hasil Sum Invoice'] = reconciled_data['HARGA'].sum()
 
     # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
-    reconciled_data = reconciled_data[['Tanggal Invoice', 'Posting Date', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
+    reconciled_data = reconciled_data[['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
 
     # Menghilangkan duplikasi berdasarkan Posting Date
-    reconciled_data = reconciled_data.drop_duplicates(subset=['Posting Date'])
+    reconciled_data = reconciled_data.drop_duplicates(subset=['Tanggal Rekening Koran'])
 
-    reconciled_data.columns = ['Tanggal Invoice', 'Posting Date', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice']
+    reconciled_data.columns = ['Tanggal Invoice', 'Tanggal Rekening Koran', 'Remark', 'Credit', 'Invoice', 'Hasil Sum Invoice']
 
     st.subheader("Contoh Hasil Rekonsiliasi:")
     st.write(reconciled_data)
