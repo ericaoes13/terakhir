@@ -53,13 +53,20 @@ if invoice_file and bank_statement_file:
     st.write(bank_statement_data)
 
     # Fitur Filter Tanggal untuk Invoice
-    st.subheader("Filter Berdasarkan Tanggal")
-    start_date_invoice = st.date_input("Tanggal Mulai Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].min()).date())
-    end_date_invoice = st.date_input("Tanggal Akhir Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].max()).date())
+    st.subheader("Filter Berdasarkan Tanggal Invoice")
+    start_date_invoice = st.date_input("Tanggal Mulai Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].min()))
+    end_date_invoice = st.date_input("Tanggal Akhir Invoice", pd.to_datetime(invoice_data['TANGGAL INVOICE'].max()))
+
+    # Fitur Filter Tanggal untuk Rekening Koran (hanya satu tanggal)
+    st.subheader("Filter Tanggal untuk Rekening Koran")
+    start_date_bank = st.date_input("Tanggal Rekening Koran", bank_statement_data['Posting Date'].min())
 
     # Pastikan start_date_invoice dan end_date_invoice adalah datetime
     start_date_invoice = pd.to_datetime(start_date_invoice)
     end_date_invoice = pd.to_datetime(end_date_invoice)
+
+    # Pastikan start_date_bank adalah datetime
+    start_date_bank = pd.to_datetime(start_date_bank)
 
     # Filter data berdasarkan tanggal untuk Invoice
     filtered_invoice_data = invoice_data[
@@ -67,10 +74,9 @@ if invoice_file and bank_statement_file:
         (invoice_data['TANGGAL INVOICE'] <= end_date_invoice)
     ]
 
-    # Filter data berdasarkan tanggal untuk Rekening Koran
+    # Filter data berdasarkan tanggal untuk Rekening Koran (hanya satu tanggal)
     filtered_bank_statement_data = bank_statement_data[
-        (bank_statement_data['Posting Date'] >= start_date_invoice) & 
-        (bank_statement_data['Posting Date'] <= end_date_invoice)
+        (bank_statement_data['Posting Date'] == start_date_bank)  # hanya satu tanggal
     ]
 
     # Gabungkan data Invoice dan Rekening Koran berdasarkan Tanggal
@@ -81,7 +87,7 @@ if invoice_file and bank_statement_file:
     reconciled_data.insert(0, 'Tanggal Invoice', reconciled_data['TANGGAL INVOICE'].dt.strftime('%d/%m/%y'))
 
     # Menambahkan kolom hasil sum invoice di paling kanan
-    reconciled_data['Hasil Sum Invoice'] = reconciled_data.groupby('Tanggal Invoice')['HARGA'].transform('sum')
+    reconciled_data['Hasil Sum Invoice'] = reconciled_data['HARGA'].sum()
 
     # Menampilkan hasil rekonsiliasi dengan hanya satu tanggal per baris
     reconciled_data = reconciled_data[['Tanggal Invoice', 'Posting Date', 'Remark', 'Credit', 'HARGA', 'Hasil Sum Invoice']]
